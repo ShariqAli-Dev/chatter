@@ -1,5 +1,9 @@
 import { cssBundleHref } from "@remix-run/css-bundle";
-import { json, type LinksFunction } from "@remix-run/node";
+import {
+  json,
+  type LoaderFunctionArgs,
+  type LinksFunction,
+} from "@remix-run/node";
 import {
   Links,
   LiveReload,
@@ -9,20 +13,33 @@ import {
   ScrollRestoration,
   useLoaderData,
 } from "@remix-run/react";
-import supabase from "lib/supabase";
+import { type SupabaseClient, createClient } from "@supabase/supabase-js";
+import { useState } from "react";
+import { type Database } from "utils/dbTypes";
+
+export interface OutletContext {
+  supabase: SupabaseClient<Database>;
+}
 
 export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
 ];
 
-export async function loader() {
-  const { data } = await supabase.from("user").select("*");
-  return json({ data: data || [] });
+export async function loader(_: LoaderFunctionArgs) {
+  const env = {
+    SUPABASE_URL: process.env.SUPABASE_URL!,
+    SUPABASE_KEY: process.env.SUPABASE_KEY!,
+  };
+
+  return json({ env });
 }
 
 export default function App() {
-  const { data } = useLoaderData<typeof loader>();
-  console.log({ data });
+  const { env } = useLoaderData<typeof loader>();
+  const [supabase] = useState(() =>
+    createClient<Database>(env.SUPABASE_URL, env.SUPABASE_KEY)
+  );
+
   return (
     <html lang="en">
       <head>
@@ -32,7 +49,7 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
+        <Outlet context={{ supabase }} />
         <ScrollRestoration />
         <Scripts />
         <LiveReload />

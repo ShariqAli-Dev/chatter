@@ -1,5 +1,6 @@
-import type { MetaFunction } from "@remix-run/node";
-import { useOutletContext } from "@remix-run/react";
+import { json, type MetaFunction } from "@remix-run/node";
+import { useLoaderData, useOutletContext } from "@remix-run/react";
+import supabase from "lib/supabase.server";
 import { type OutletContext } from "~/root";
 
 export const meta: MetaFunction = () => {
@@ -9,9 +10,18 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+export async function loader() {
+  const { data, error } = await supabase.from("user").select("*");
+  if (error) {
+    console.error(error);
+  }
+  return json({ data });
+}
+
 export default function Index() {
   const { supabase } = useOutletContext<OutletContext>();
-
+  const { data } = useLoaderData<typeof loader>();
+  console.log(data);
   async function login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

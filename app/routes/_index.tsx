@@ -20,8 +20,7 @@ export async function loader() {
 
 export default function Index() {
   const { supabase } = useOutletContext<OutletContext>();
-  const { data } = useLoaderData<typeof loader>();
-  console.log(data);
+  // const { data } = useLoaderData<typeof loader>();
   async function login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

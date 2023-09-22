@@ -1,8 +1,8 @@
 import { cssBundleHref } from "@remix-run/css-bundle";
 import {
   json,
-  type LoaderFunctionArgs,
   type LinksFunction,
+  type LoaderFunctionArgs,
 } from "@remix-run/node";
 import {
   Links,
@@ -12,9 +12,10 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useNavigate,
 } from "@remix-run/react";
-import { type SupabaseClient, createClient } from "@supabase/supabase-js";
-import { useState } from "react";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
 import { type Database } from "utils/dbTypes";
 
 export interface OutletContext {
@@ -29,6 +30,7 @@ export async function loader(_: LoaderFunctionArgs) {
   const env = {
     SUPABASE_URL: process.env.SUPABASE_URL!,
     SUPABASE_KEY: process.env.SUPABASE_KEY!,
+    ADMIN_ACCOUNTS: process.env.ADMIN_ACCOUNTS?.split(", "),
   };
 
   return json({ env });
@@ -39,6 +41,29 @@ export default function App() {
   const [supabase] = useState(() =>
     createClient<Database>(env.SUPABASE_URL, env.SUPABASE_KEY)
   );
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/");
+      } else {
+        const userIsAdmin = env.ADMIN_ACCOUNTS!.includes(session.user.email!);
+        if (!userIsAdmin) {
+          supabase.auth.signOut();
+          navigate("/");
+        } else {
+          navigate("dashboard");
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   return (
     <html lang="en">

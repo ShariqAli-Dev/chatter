@@ -1,6 +1,7 @@
 import { json, type MetaFunction } from "@remix-run/node";
-import { useLoaderData, useOutletContext } from "@remix-run/react";
-import supabase from "lib/supabase.server";
+import { useOutletContext } from "@remix-run/react";
+import { Button } from "~/components/ui/button";
+import supabase from "~/lib/supabase.server";
 import { type OutletContext } from "~/root";
 
 export const meta: MetaFunction = () => {
@@ -48,8 +49,8 @@ export default function Index() {
   return (
     <main>
       <h1>medici admin</h1>
-      <button onClick={login}>login</button>
-      <button onClick={logout}>logout</button>
+      <Button onClick={login}>login</Button>
+      <Button onClick={logout}>logout</Button>
     </main>
   );
 }

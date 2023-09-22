@@ -16,16 +16,16 @@ import {
 } from "@remix-run/react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
-import { type Database } from "utils/dbTypes";
-
+import { type Database } from "./utils/dbTypes";
+import styles from "./globals.css";
 export interface OutletContext {
   supabase: SupabaseClient<Database>;
 }
 
 export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: styles },
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
 ];
-
 export async function loader(_: LoaderFunctionArgs) {
   const env = {
     SUPABASE_URL: process.env.SUPABASE_URL!,

@@ -1,27 +1,17 @@
-import { json, type MetaFunction } from "@remix-run/node";
+import { type MetaFunction } from "@remix-run/node";
 import { useOutletContext } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
-import supabase from "~/lib/supabase.server";
 import { type OutletContext } from "~/root";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "Medici Admin" },
+    { name: "Medici Admin Name", content: "Medici Admin Content" },
   ];
 };
 
-export async function loader() {
-  const { data, error } = await supabase.from("user").select("*");
-  if (error) {
-    console.error(error);
-  }
-  return json({ data });
-}
-
 export default function Index() {
   const { supabase } = useOutletContext<OutletContext>();
-  // const { data } = useLoaderData<typeof loader>();
   async function login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -35,22 +25,16 @@ export default function Index() {
     if (error) {
       alert("there was an error logging in");
       console.error(error);
-    }
-  }
-
-  async function logout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      alert("there was an error logging out");
-      console.error(error);
+      supabase.auth.signOut();
     }
   }
 
   return (
-    <main>
-      <h1>medici admin</h1>
-      <Button onClick={login}>login</Button>
-      <Button onClick={logout}>logout</Button>
+    <main className="flex flex-col items-center justify-center flex-1">
+      <h1 className="text-5xl">The Medici Project</h1>
+      <Button onClick={login} className="mt-5 text-2xl w-60 h-15">
+        Admin Login
+      </Button>
     </main>
   );
 }

@@ -12,6 +12,7 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useLocation,
   useNavigate,
 } from "@remix-run/react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -42,6 +43,7 @@ export default function App() {
     createClient<Database>(env.SUPABASE_URL, env.SUPABASE_KEY)
   );
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const {
@@ -54,8 +56,8 @@ export default function App() {
         if (!userIsAdmin) {
           supabase.auth.signOut();
           navigate("/");
-        } else {
-          navigate("dashboard");
+        } else if (location.pathname === "/") {
+          navigate("/dashboard");
         }
       }
     });
@@ -73,7 +75,7 @@ export default function App() {
         <Meta />
         <Links />
       </head>
-      <body>
+      <body className="flex flex-col h-screen p-4 m-auto max-w-7xl">
         <Outlet context={{ supabase }} />
         <ScrollRestoration />
         <Scripts />

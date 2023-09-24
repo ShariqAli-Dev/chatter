@@ -19,8 +19,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { type Database } from "./utils/dbTypes";
 import styles from "./globals.css";
+import { Toaster } from "./components/ui/toaster";
+
 export interface OutletContext {
   supabase: SupabaseClient<Database>;
+  adminId: string;
 }
 
 export const links: LinksFunction = () => [
@@ -44,7 +47,7 @@ export default function App() {
   );
   const navigate = useNavigate();
   const location = useLocation();
-
+  const [adminId, setAdminId] = useState<string>();
   useEffect(() => {
     const {
       data: { subscription },
@@ -56,7 +59,11 @@ export default function App() {
         if (!userIsAdmin) {
           supabase.auth.signOut();
           navigate("/");
-        } else if (location.pathname === "/") {
+        }
+        if (!adminId) {
+          setAdminId(session.user.id);
+        }
+        if (location.pathname === "/") {
           navigate("/dashboard");
         }
       }
@@ -75,8 +82,9 @@ export default function App() {
         <Meta />
         <Links />
       </head>
-      <body className="flex flex-col h-screen p-4 m-auto max-w-7xl">
-        <Outlet context={{ supabase }} />
+      <body className="flex flex-col h-screen p-6 m-auto max-w-8xl">
+        {adminId && <Outlet context={{ supabase, adminId }} />}
+        <Toaster />
         <ScrollRestoration />
         <Scripts />
         <LiveReload />

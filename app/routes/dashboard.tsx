@@ -30,17 +30,17 @@ export default function Dashboard() {
       </header>
       <main className="flex justify-around flex-1 p-3 ">
         <div className="w-[45%] h-full">
-          <section className="border border-black">
+          <section className="p-1 border border-black">
             <h2 className="text-3xl font-bold">{email}</h2>
             <Button onClick={logout}>logout</Button>
           </section>
-          <section className="mt-8 border border-black">
+          <section className="p-1 mt-8 border border-black">
             <h2 className="text-3xl font-bold">Medici Fund Info</h2>
             <h3 className="text-xl">Totas Users</h3>
             <h3 className="text-xl">Total $$</h3>
             <h3 className="text-xl">Trailing 30 day performance</h3>
           </section>
-          <section className="flex flex-wrap gap-3 mt-8 border border-black">
+          <section className="flex flex-wrap gap-3 p-1 mt-8 border border-black">
             <h2 className="w-full text-3xl font-bold ">Pending Things</h2>
             <Button variant="link" asChild>
               <Link to="/pending-users">Pending Users</Link>

@@ -1,145 +1,154 @@
-// import { type LoaderFunctionArgs } from "@remix-run/node";
 import { ArrowLeftIcon, ReloadIcon } from "@radix-ui/react-icons";
-import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate } from "@remix-run/react";
+import { type ActionFunctionArgs, json } from "@remix-run/node";
+import {
+  Form,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+} from "@remix-run/react";
 import { type ColumnDef } from "@tanstack/react-table";
+import { useEffect } from "react";
 import PendingUsersTable from "~/components/PendingUsersTable";
+import { Button } from "~/components/ui/button";
 import supabase from "~/lib/supabase.server";
 import { APPROVAL_TYPE } from "~/utils/constants";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
-export interface Payment {
+import { type ActionData } from "~/utils/types";
+
+interface User {
   id: string;
-  amount: number;
-  status: "pending" | "processing" | "success" | "failed";
+  created_at: string;
   email: string;
+  handle: string | null;
+  approval_type: number & {
+    type: string;
+  };
+  first_name: string;
+  last_name: string;
 }
 
 export async function loader() {
-  const payments: Payment[] = [
-    {
-      id: "1",
-      amount: 100,
-      status: "pending",
-      email: "tryt@rtyty5.com",
-    },
-    {
-      id: "2",
-      amount: 100,
-      status: "processing",
-      email: "asdasd@asdasd.com",
-    },
-    {
-      id: "3",
-      amount: 100,
-      status: "success",
-      email: "5rtyy@556.com",
-    },
-  ];
-  return json({ payments: payments });
   const { data, error } = await supabase
     .from("user")
-    .select("id, created_at, email, handle, approval_type,first_name,last_name")
+    .select(
+      "id, created_at, email, handle, approval_type,first_name,last_name, approval_type(type)"
+    )
     .in("approval_type", [APPROVAL_TYPE.PENDING.ID, APPROVAL_TYPE.DENIED.ID]);
   if (error) {
     console.log(error);
   }
-
-  return json({ pendingUsers: data });
+  return json({ pendingUsers: data ?? [] });
 }
 
-const columns: ColumnDef<Payment>[] = [
-  { accessorKey: "id", header: () => <p className="text-xl">ID</p> },
-  { accessorKey: "status", header: () => <p className="text-xl">STATUS</p> },
+export async function action({ request }: ActionFunctionArgs) {
+  try {
+    let formData = await request.formData();
+    let { _action, ...values } = Object.fromEntries(formData);
+
+    if (_action === "get_user_documents") {
+      const { data: userDocuments, error } = await supabase.storage
+        .from("user_documents")
+        .list(`${values.id}/pending`);
+      if (error || !userDocuments)
+        return json<ActionData>({
+          status: 404,
+          errors: [error],
+          message: "error fetching documents",
+        });
+
+      const imageUrls: string[] = [];
+      for (const document of userDocuments) {
+        const { data, error } = await supabase.storage
+          .from("user_documents")
+          .createSignedUrl(`${values.id}/pending/${document.name}`, 5);
+        if (error?.message || !data?.signedUrl)
+          return json<ActionData>({
+            status: 404,
+            errors: [error],
+            message: "error fetching signed urls",
+          });
+        imageUrls.push(data.signedUrl);
+      }
+
+      return json<ActionData>({
+        status: 200,
+        message: "documents fetched",
+        id: "get_user_documents",
+        data: imageUrls,
+      });
+    }
+    return json<ActionData>({ status: 404, message: "no action taken" });
+  } catch (e: any) {
+    return json<ActionData>({
+      status: 500,
+      errors: [e],
+      message: "uncalled for server error",
+    });
+  }
+}
+
+const columns: ColumnDef<User>[] = [
+  {
+    accessorKey: "name",
+    header: () => <p className="text-2xl">NAME</p>,
+    cell: ({ row }) => {
+      const fullName = row.original.first_name + " " + row.original.last_name;
+      return <p>{fullName}</p>;
+    },
+  },
   {
     accessorKey: "email",
-    header: ({ column }) => {
+    header: () => {
+      return <p className="text-2xl">EMAIL</p>;
+    },
+  },
+  {
+    accessorKey: "approval_type.type",
+    header: () => <p className="text-2xl">STATUS</p>,
+  },
+  {
+    id: "documents",
+    header: () => <p className="text-2xl">DOCUMENTS</p>,
+    cell: ({ row }) => {
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="text-xl"
-        >
-          Email
-          <ArrowUpDown className="w-4 h-4 ml-2" />
-        </Button>
+        <Form method="post">
+          <input type="hidden" name="id" value={row.original.id} />
+          <Button
+            type="submit"
+            name="_action"
+            value="get_user_documents"
+            size="sm"
+          >
+            Get Documents
+          </Button>
+        </Form>
       );
     },
   },
   {
-    accessorKey: "amount",
-    header: () => <p className="text-xl text-right">AMOUNT</p>,
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
-      return <div className="font-medium text-right">{formatted}</div>;
-    },
-  },
-  {
+    header: () => <p className="text-2xl">ACTIONS</p>,
     id: "actions",
     cell: ({ row }) => {
-      const payment = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-8 h-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
-            >
-              Copy payment ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+      return <Button size="sm">lemme do my thing</Button>;
     },
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value: boolean) => {
-          table.toggleAllPageRowsSelected(!!value);
-        }}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value: boolean) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
   },
 ];
 
 export default function PendingUsers() {
-  const { payments } = useLoaderData();
+  const { pendingUsers } = useLoaderData<typeof loader>();
+  const actionData = useActionData<ActionData>();
+
+  useEffect(() => {
+    if (actionData?.id === "get_user_documents") {
+      const imageUrls = actionData.data as string[];
+      imageUrls.forEach((url) => {
+        window.open(url, "_blank");
+      });
+    }
+    if (actionData?.errors?.length) {
+      alert("there has been an error");
+    }
+  }, [actionData]);
+
   const navigate = useNavigate();
   return (
     <>
@@ -152,7 +161,7 @@ export default function PendingUsers() {
         <ReloadIcon className="w-10 h-10 cursor-pointer" />
       </header>
       <main>
-        <PendingUsersTable data={payments} columns={columns} />
+        <PendingUsersTable data={pendingUsers} columns={columns} />
       </main>
     </>
   );
